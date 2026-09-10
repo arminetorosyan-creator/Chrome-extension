@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Transcript Cleaner",
+  "version": "1.0.0",
+  "description": "Adds a button to the YouTube transcript panel that copies a cleaned, timestamp-free transcript to your clipboard.",
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

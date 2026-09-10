@@ -1,0 +1,35 @@
+#ytc-copy-transcript-container {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 16px;
+}
+
+#ytc-copy-transcript-btn {
+  font-family: "Roboto", "Arial", sans-serif;
+  font-size: 1.2rem;
+  font-weight: 500;
+  line-height: 1;
+  padding: 8px 14px;
+  border-radius: 18px;
+  border: 1px solid var(--yt-spec-10-percent-layer, rgba(0, 0, 0, 0.1));
+  background-color: var(--yt-spec-badge-chip-background, #f2f2f2);
+  color: var(--yt-spec-text-primary, #0f0f0f);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+#ytc-copy-transcript-btn:hover {
+  background-color: var(--yt-spec-10-percent-layer, rgba(0, 0, 0, 0.1));
+}
+
+#ytc-copy-transcript-btn.ytc-copied {
+  background-color: #1f8a3e;
+  color: #ffffff;
+  border-color: #1f8a3e;
+}
+
+#ytc-copy-transcript-btn.ytc-error {
+  background-color: #cc3333;
+  color: #ffffff;
+  border-color: #cc3333;
+}
