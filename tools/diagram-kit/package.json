@@ -1,0 +1,17 @@
+{
+  "name": "diagram-kit",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Validate, auto-layout and render BPMN 2.0 and PlantUML diagrams for the diagram-architect agent.",
+  "type": "module",
+  "scripts": {
+    "setup": "./setup.sh",
+    "render": "node render.mjs"
+  },
+  "dependencies": {
+    "bpmn-js": "^18.31.0",
+    "bpmn-moddle": "^10.3.1",
+    "bpmnlint": "^11.14.0",
+    "playwright-core": "^1.64.0"
+  }
+}

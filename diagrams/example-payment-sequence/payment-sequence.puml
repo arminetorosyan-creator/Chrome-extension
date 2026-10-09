@@ -1,0 +1,39 @@
+@startuml
+title Online Payment – Card Authorisation
+header v0.1 · Draft · 2026-10-09 · Owner: Product
+
+actor Customer
+participant "Web app" as App
+participant "Payment service" as Pay
+database "Ledger" as Ledger
+participant "Card network" as Network
+
+Customer -> App : Confirm payment
+activate App
+App -> Pay : Create payment (amount, card token)
+activate Pay
+Pay -> Network : Authorisation request
+activate Network
+
+alt Approved
+  Network --> Pay : Approved (auth code)
+  Pay -> Ledger : Record payment
+  Pay --> App : Payment confirmed
+  App --> Customer : Show receipt
+else Declined
+  Network --> Pay : Declined (reason)
+  Pay --> App : Payment failed
+  App --> Customer : Show error and retry option
+else No response within 10 s (exception)
+  Pay -> Pay : Mark as pending
+  Pay --> App : Payment pending
+  App --> Customer : Show "we'll notify you"
+end
+deactivate Network
+deactivate Pay
+deactivate App
+
+note over Pay, Network
+  Authorisation timeout is a business rule: 10 seconds.
+end note
+@enduml

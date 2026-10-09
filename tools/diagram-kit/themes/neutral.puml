@@ -1,0 +1,89 @@
+' Neutral professional theme, prepended to every diagram by render.mjs.
+' Palette matches the BPMN theme in lib/layout-bpmn.mjs.
+' Mark exception states/classes/use cases with the <<exception>> stereotype (red).
+
+skinparam dpi 144
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam defaultFontColor #263238
+skinparam backgroundColor #FFFFFF
+skinparam ArrowColor #37474F
+skinparam ArrowFontColor #37474F
+skinparam ArrowFontSize 12
+skinparam ArrowThickness 1.2
+
+skinparam TitleFontSize 20
+skinparam TitleFontStyle bold
+skinparam TitleFontColor #1F3A57
+skinparam HeaderFontColor #607D8B
+skinparam HeaderFontSize 11
+skinparam CaptionFontColor #607D8B
+skinparam CaptionFontSize 11
+skinparam LegendBackgroundColor #F7F9FB
+skinparam LegendBorderColor #90A4AE
+skinparam LegendFontSize 12
+
+skinparam NoteBackgroundColor #FFFDE7
+skinparam NoteBorderColor #B7791F
+
+skinparam ParticipantBackgroundColor #EAF2FB
+skinparam ParticipantBorderColor #2F5D8A
+skinparam ActorBackgroundColor #EAF2FB
+skinparam ActorBorderColor #2F5D8A
+skinparam DatabaseBackgroundColor #EAF2FB
+skinparam DatabaseBorderColor #2F5D8A
+skinparam BoundaryBackgroundColor #EAF2FB
+skinparam BoundaryBorderColor #2F5D8A
+skinparam QueueBackgroundColor #EAF2FB
+skinparam QueueBorderColor #2F5D8A
+skinparam SequenceLifeLineBorderColor #90A4AE
+skinparam SequenceBoxBackgroundColor #F7F9FB
+skinparam SequenceBoxBorderColor #90A4AE
+skinparam SequenceGroupBackgroundColor #F7F9FB
+skinparam SequenceGroupBorderColor #90A4AE
+skinparam SequenceDividerBackgroundColor #ECEFF1
+
+skinparam ActivityBackgroundColor #EAF2FB
+skinparam ActivityBorderColor #2F5D8A
+skinparam ActivityDiamondBackgroundColor #FFF8E1
+skinparam ActivityDiamondBorderColor #B7791F
+skinparam ActivityStartColor #2E7D32
+skinparam ActivityEndColor #37474F
+skinparam PartitionBackgroundColor #F7F9FB
+skinparam PartitionBorderColor #90A4AE
+skinparam SwimlaneBorderColor #90A4AE
+skinparam SwimlaneTitleFontStyle bold
+
+skinparam UsecaseBackgroundColor #EAF2FB
+skinparam UsecaseBorderColor #2F5D8A
+skinparam RectangleBackgroundColor #FFFFFF
+skinparam RectangleBorderColor #546E7A
+skinparam PackageBackgroundColor #F7F9FB
+skinparam PackageBorderColor #90A4AE
+
+skinparam ClassBackgroundColor #EAF2FB
+skinparam ClassBorderColor #2F5D8A
+skinparam ClassHeaderBackgroundColor #D6E6F5
+skinparam ClassAttributeIconSize 0
+skinparam StereotypeCBackgroundColor #FFF8E1
+skinparam EnumBackgroundColor #FFF8E1
+skinparam EnumBorderColor #B7791F
+
+skinparam StateBackgroundColor #EAF2FB
+skinparam StateBorderColor #2F5D8A
+skinparam StateStartColor #2E7D32
+skinparam StateEndColor #37474F
+
+skinparam ComponentBackgroundColor #EAF2FB
+skinparam ComponentBorderColor #2F5D8A
+
+skinparam ParticipantBackgroundColor<<exception>> #FDECEA
+skinparam ParticipantBorderColor<<exception>> #C62828
+skinparam UsecaseBackgroundColor<<exception>> #FDECEA
+skinparam UsecaseBorderColor<<exception>> #C62828
+skinparam ClassBackgroundColor<<exception>> #FDECEA
+skinparam ClassBorderColor<<exception>> #C62828
+skinparam StateBackgroundColor<<exception>> #FDECEA
+skinparam StateBorderColor<<exception>> #C62828

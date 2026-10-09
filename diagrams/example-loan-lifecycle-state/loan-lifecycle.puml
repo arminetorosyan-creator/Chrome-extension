@@ -1,0 +1,21 @@
+@startuml
+title Loan Application – Status Lifecycle
+header v0.1 · Draft · 2026-10-09 · Owner: Product
+
+[*] --> Draft : Applicant starts application
+Draft --> Submitted : Submit
+Submitted --> InReview : Completeness check passed
+Submitted --> Draft : Documents missing
+InReview --> Approved : Decision = approve
+InReview --> Rejected : Decision = reject
+InReview --> Escalated <<exception>> : SLA breached
+Escalated --> InReview : Team lead assigns
+Approved --> Disbursed : Funds released
+Draft --> Withdrawn : Applicant withdraws
+Submitted --> Withdrawn : Applicant withdraws
+Rejected --> [*]
+Withdrawn --> [*]
+Disbursed --> [*]
+
+state Escalated <<exception>>
+@enduml

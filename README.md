@@ -27,3 +27,10 @@ your clipboard.
   Clipboard API (with a `document.execCommand('copy')` fallback).
 - No data leaves your browser; the extension only reads the DOM of the
   currently open YouTube tab.
+
+## Diagram Architect agent (separate from the extension)
+
+The repo also contains a Claude Code subagent that turns a written description into BPMN or UML diagrams:
+[`.claude/agents/diagram-architect.md`](.claude/agents/diagram-architect.md), with its tooling in
+[`tools/diagram-kit/`](tools/diagram-kit/README.md) and examples in [`diagrams/`](diagrams/).
+It does not affect the Chrome extension files.
