@@ -54,7 +54,10 @@ function sizeOf(el) {
   if (isA(el, 'bpmn:Gateway')) return { w: 50, h: 50 };
   if (isA(el, 'bpmn:DataObjectReference')) return { w: 36, h: 50 };
   if (isA(el, 'bpmn:DataStoreReference')) return { w: 50, h: 50 };
-  if (isA(el, 'bpmn:TextAnnotation')) return { w: 110, h: 60 };
+  if (isA(el, 'bpmn:TextAnnotation')) {
+    const lines = Math.max(1, Math.ceil(((el.text || '').length * 6.4) / 132));
+    return { w: 150, h: lines * 14 + 14 };
+  }
   return { w: 100, h: 80 };
 }
 
@@ -242,20 +245,27 @@ export async function layoutBpmn(xml) {
   }
 
   // ---- sub-row assignment -------------------------------------------------
-  const occupied = new Map(); // `${laneId}:${col}` -> Map(row -> Set(kinds))
-  const take = (laneId, c, preferred, kind = 'node') => {
+  const occupied = new Map(); // `${laneId}:${col}` -> Set(rows in use)
+  const take = (laneId, c, preferred) => {
     const key = `${laneId}:${c}`;
-    if (!occupied.has(key)) occupied.set(key, new Map());
+    if (!occupied.has(key)) occupied.set(key, new Set());
     const used = occupied.get(key);
-    // A data object and an annotation may share one sub-row, side by side.
-    const free = (row) => {
-      const kinds = used.get(row);
-      return !kinds || (kind !== 'node' && !kinds.has('node') && !kinds.has(kind));
-    };
     let r = Math.max(0, preferred);
-    while (!free(r)) r++;
-    if (!used.has(r)) used.set(r, new Set());
-    used.get(r).add(kind);
+    while (used.has(r)) r++;
+    used.add(r);
+    return r;
+  };
+
+  // Like take(), but the row must be free in every listed column.
+  const takeSpan = (laneId, cols, preferred) => {
+    const sets = cols.map((c) => {
+      const key = `${laneId}:${c}`;
+      if (!occupied.has(key)) occupied.set(key, new Set());
+      return occupied.get(key);
+    });
+    let r = Math.max(0, preferred);
+    while (sets.some((u) => u.has(r))) r++;
+    sets.forEach((u) => u.add(r));
     return r;
   };
 
@@ -292,16 +302,57 @@ export async function layoutBpmn(xml) {
     const ref = dir === 'in' ? assoc.sourceRef?.[0] : assoc.targetRef;
     if (ref && !anchorOf.has(ref.id)) anchorOf.set(ref.id, task);
   }
+  // Data objects sit side by side in the row below their anchor; each
+  // annotation gets its own row beneath them.
+  const DATA_SLOT = 90;
+  const groups = new Map();
   for (const p of pseudo) {
     let anchor = anchorOf.get(p.el.id);
     if (anchor && hostOf.has(anchor.id)) anchor = hostOf.get(anchor.id);
-    const ai = anchor && info.get(anchor.id);
-    const c = ai?.container || p.container || containers.find((x) => x.process);
+    const key = anchor ? anchor.id : p.el.id;
+    if (!groups.has(key)) groups.set(key, { anchor, container: p.container, items: [] });
+    groups.get(key).items.push(p);
+  }
+  // A message flow that leaves/enters the anchor from a pool further down
+  // runs straight through the area below it, so items move aside.
+  const poolIndex = (el) => containers.findIndex((c) => c.participant === el || (info.get(el.id) && info.get(el.id).container === c));
+  const hasDownMessage = (el) =>
+    (collaboration?.messageFlows || []).some((m) => {
+      const other = m.sourceRef === el ? m.targetRef : m.targetRef === el ? m.sourceRef : null;
+      return other && poolIndex(other) > poolIndex(el);
+    });
+  for (const g of groups.values()) {
+    const ai = g.anchor && info.get(g.anchor.id);
+    const c = ai?.container || g.container || containers.find((x) => x.process);
     const lane = ai?.lane || c.lanes[0];
     const cl = ai?.col ?? 0;
-    const hasBoundary = anchor && boundaries.some((b) => b.attachedToRef === anchor);
-    const row = take(lane.id, cl, (ai?.row ?? 0) + 1 + (hasBoundary ? 1 : 0), p.kind);
-    info.set(p.el.id, { el: p.el, container: c, lane, col: cl, row, pseudo: true, kind: p.kind });
+    const hasBoundary = g.anchor && boundaries.some((b) => b.attachedToRef === g.anchor);
+    let row = (ai?.row ?? 0) + 1 + (hasBoundary ? 1 : 0);
+    const dataItems = g.items.filter((p) => p.kind === 'data');
+    const notes = g.items.filter((p) => p.kind !== 'data');
+    if (dataItems.length > 2) {
+      // a wide data row would spill into neighbouring columns: go below their nodes
+      for (const i of info.values()) {
+        if (!i.pseudo && !i.boundary && i.lane === lane && i.col != null && Math.abs(i.col - cl) === 1) row = Math.max(row, i.row + 1);
+      }
+    }
+    const aside = g.anchor && hasDownMessage(g.anchor);
+    const side = cl === 0 ? 1 : -1;
+    const cols = aside ? [cl, cl + side] : [cl];
+    if (dataItems.length) {
+      row = takeSpan(lane.id, cols, row);
+      const shift = aside ? side * (69 + 45 * (dataItems.length - 1)) : 0;
+      dataItems.forEach((p, k) => {
+        const dx = (k - (dataItems.length - 1) / 2) * DATA_SLOT + shift;
+        info.set(p.el.id, { el: p.el, container: c, lane, col: cl, row, pseudo: true, kind: 'data', dx });
+      });
+      row += 1;
+    }
+    for (const p of notes) {
+      row = takeSpan(lane.id, cols, row);
+      info.set(p.el.id, { el: p.el, container: c, lane, col: cl, row, pseudo: true, kind: p.kind, dx: aside ? side * 87 : 0 });
+      row += 1;
+    }
   }
 
   // ---- geometry -----------------------------------------------------------
@@ -338,7 +389,7 @@ export async function layoutBpmn(xml) {
     if (i.boundary) continue;
     const lb = laneBounds.get(i.lane.id);
     const { w, h } = sizeOf(i.el);
-    const cx = X0 + i.col * COL_W + COL_W / 2 + (i.pseudo ? (i.kind === 'data' ? -45 : 62) : 0);
+    const cx = X0 + i.col * COL_W + COL_W / 2 + (i.dx || 0);
     const cy = lb.y + i.row * ROW_H + ROW_H / 2;
     bounds.set(id, { x: Math.round(cx - w / 2), y: Math.round(cy - h / 2), width: w, height: h });
   }
@@ -370,17 +421,20 @@ export async function layoutBpmn(xml) {
     shapeDi.set(el.id, s);
   };
   let edgeSeq = 0;
-  const edge = (el, pts, style) => {
+  const allSegs = [];
+  const edge = (el, pts, style, weight = 3) => {
     if (!el.id) el.id = `Assoc_${++edgeSeq}`;
     const e = moddle.create('bpmndi:BPMNEdge', { id: `${el.id}_di`, bpmnElement: el, waypoint: pts.map(([a, b]) => P(a, b)) });
     if (style) paint(e, style);
     plane.planeElement.push(e);
     edgeDi.set(el.id, e);
+    allSegs.push({ pts, weight });
     return e;
   };
 
   // Explicit label boxes: without them bpmn-js picks narrow default boxes
-  // that wrap words mid-way and sit on top of connection lines.
+  // that wrap words mid-way and sit on top of connection lines. Positions are
+  // requested here and resolved once every route exists (see below).
   const textBox = (name, maxW) => {
     const est = Math.ceil(name.length * 6.6) + 6;
     return { w: Math.max(24, Math.min(maxW, est)), h: Math.max(1, Math.ceil(est / maxW)) * 14 + 2 };
@@ -390,6 +444,8 @@ export async function layoutBpmn(xml) {
       bounds: B({ x: Math.round(x), y: Math.round(yy), width: w, height: h }),
     });
   };
+  const labelReqs = [];
+  const requestLabel = (di, w, h, cands, selfId) => labelReqs.push({ di, w, h, cands, selfId });
   const placeEdgeLabel = (di, pts, name, firstSegment) => {
     const { w, h } = textBox(name, 110);
     let k = 0;
@@ -401,13 +457,18 @@ export async function layoutBpmn(xml) {
       }
     }
     const [x1, y1] = pts[k], [x2, y2] = pts[k + 1];
-    if (x1 === x2) {
-      const yy = firstSegment ? (y2 > y1 ? y1 + 4 : y1 - 4 - h) : (y1 + y2) / 2 - h / 2;
-      setLabel(di, x1 + 6, yy, w, h);
-    } else {
-      const xx = firstSegment ? (x2 > x1 ? x1 + 4 : x1 - 4 - w) : (x1 + x2) / 2 - w / 2;
-      setLabel(di, xx, y1 - h - 3, w, h);
+    const steps = firstSegment ? [4, 28, 52] : [0.5, 0.3, 0.7];
+    const cands = [];
+    for (const t of steps) {
+      if (x1 === x2) {
+        const yy = firstSegment ? (y2 > y1 ? y1 + t : y1 - t - h) : y1 + (y2 - y1) * t - h / 2;
+        cands.push([x1 + 6, yy], [x1 - 6 - w, yy]);
+      } else {
+        const xx = firstSegment ? (x2 > x1 ? x1 + t : x1 - t - w) : x1 + (x2 - x1) * t - w / 2;
+        cands.push([xx, y1 - h - 3], [xx, y1 + 3]);
+      }
     }
+    requestLabel(di, w, h, cands);
   };
 
   for (const c of containers) {
@@ -458,14 +519,6 @@ export async function layoutBpmn(xml) {
     return n;
   };
 
-  const exits = new Map(); // gateway id -> which sides carry a connection
-  const mark = (id, b, pt) => {
-    const m = exits.get(id) || { up: false, down: false };
-    if (pt[1] <= b.y) m.up = true;
-    if (pt[1] >= b.y + b.height) m.down = true;
-    exits.set(id, m);
-  };
-
   for (const f of seqFlows) {
     const sb = bounds.get(f.sourceRef.id), tb = bounds.get(f.targetRef.id);
     if (!sb || !tb) continue;
@@ -497,8 +550,6 @@ export async function layoutBpmn(xml) {
       cands.push(hFirst);
     }
     const pts = cands.map((c) => [hitCount(c, skip), c]).sort((a, b) => a[0] - b[0])[0][1];
-    mark(f.sourceRef.id, sb, pts[0]);
-    mark(f.targetRef.id, tb, pts[pts.length - 1]);
     const bad = isException(f) || isException(f.sourceRef) || isException(f.targetRef);
     const di = edge(f, pts, bad ? THEME.exception : THEME.flow);
     if (f.name) placeEdgeLabel(di, pts, f.name, isA(f.sourceRef, 'bpmn:Gateway'));
@@ -525,42 +576,109 @@ export async function layoutBpmn(xml) {
     if (m.name) placeEdgeLabel(di, pts, m.name, false);
   }
 
-  // Vertical connector between two shapes stacked in one column; it leaves
-  // from the left part of the overlap so it clears boundary events.
-  const vlink = (a, b) => {
-    const lo = Math.max(a.x, b.x), hi = Math.min(a.x + a.width, b.x + b.width);
-    const x = hi - lo >= 4 ? lo + Math.min(8, (hi - lo) / 2) : null;
-    const ax = x ?? mid(a)[0], bx = x ?? mid(b)[0];
+  // Association from an anchor to its data object / annotation. The line
+  // leaves at an x that is shared by both shapes and clear of sibling shapes.
+  const assocRoute = (a, b, ends) => {
     const down = b.y > a.y;
-    const p1 = [ax, down ? a.y + a.height : a.y], p2 = [bx, down ? b.y : b.y + b.height];
-    const my = (p1[1] + p2[1]) / 2;
-    return ax === bx ? [p1, p2] : [p1, [ax, my], [bx, my], p2];
+    const y1 = down ? a.y + a.height : a.y, y2 = down ? b.y : b.y + b.height;
+    const acx = a.x + a.width / 2, bcx = b.x + b.width / 2;
+    const inA = (x) => x >= a.x + 4 && x <= a.x + a.width - 4;
+    const inB = (x) => x >= b.x + 4 && x <= b.x + b.width - 4;
+    const lo = Math.min(y1, y2), hi = Math.max(y1, y2);
+    const alongLine = (x) =>
+      allSegs.some(({ pts }) =>
+        pts.some((q, k) => {
+          const r = pts[k + 1];
+          return r && q[0] === r[0] && Math.abs(q[0] - x) < 6 && Math.max(Math.min(q[1], r[1]), lo) < Math.min(Math.max(q[1], r[1]), hi);
+        }));
+    const clear = (x) =>
+      hitCount([[x - 4, y1], [x - 4, y2]], ends) + hitCount([[x + 4, y1], [x + 4, y2]], ends) === 0 && !alongLine(x);
+    const xs = [bcx, acx - 42, acx + 42, acx, acx - 20, acx + 20, acx - 30, acx + 30].filter((x) => inA(x) && inB(x));
+    const x = xs.find(clear) ?? xs[0];
+    if (x == null) {
+      const my = (y1 + y2) / 2;
+      return [[acx, y1], [acx, my], [bcx, my], [bcx, y2]];
+    }
+    return [[x, y1], [x, y2]];
   };
   for (const a of associations) {
-    const sb = boxOf(a.sourceRef), tb = boxOf(a.targetRef);
-    if (sb && tb) edge(a, vlink(sb, tb), THEME.annotation);
+    const s0 = a.sourceRef, t0 = a.targetRef;
+    const sb = boxOf(s0), tb = boxOf(t0);
+    if (!sb || !tb) continue;
+    const toNote = isA(t0, 'bpmn:TextAnnotation');
+    if (!toNote && !isA(s0, 'bpmn:TextAnnotation')) {
+      edge(a, [mid(sb), mid(tb)], THEME.annotation, 1);
+      continue;
+    }
+    const [anchor, note] = toNote ? [s0, t0] : [t0, s0];
+    const pts = assocRoute(boxOf(anchor), boxOf(note), new Set([anchor.id, note.id]));
+    edge(a, toNote ? pts : [...pts].reverse(), THEME.annotation, 1);
   }
   for (const { assoc, task, dir } of dataAssocs) {
     const ref = dir === 'in' ? assoc.sourceRef?.[0] : assoc.targetRef;
     const rb = ref && bounds.get(ref.id), tb = bounds.get(task.id);
-    if (rb && tb) edge(assoc, dir === 'in' ? vlink(rb, tb) : vlink(tb, rb), THEME.data);
+    if (!rb || !tb) continue;
+    const pts = assocRoute(tb, rb, new Set([task.id, ref.id]));
+    edge(assoc, dir === 'in' ? [...pts].reverse() : pts, THEME.data, 1);
   }
 
-  // Labels for events (below), boundary events (beside) and gateways
-  // (above, unless the top side carries a connection and the bottom is free).
+  // Label requests for events, boundary events, gateways and data objects.
   for (const [id, i] of info) {
     const b = bounds.get(id);
-    if (!i.el.name || !b || i.pseudo) continue;
+    if (!i.el.name || !b || (i.pseudo && i.kind !== 'data')) continue;
     const di = shapeDi.get(id);
-    const { w, h } = textBox(i.el.name, i.boundary ? 90 : 100);
-    const cx = b.x + b.width / 2;
-    if (i.boundary) setLabel(di, b.x + b.width + 2, b.y + b.height + 2, w, h);
-    else if (isA(i.el, 'bpmn:Event')) setLabel(di, cx - w / 2, b.y + b.height + 4, w, h);
-    else if (isA(i.el, 'bpmn:Gateway')) {
-      const m = exits.get(id) || {};
-      const above = !m.up || m.down;
-      setLabel(di, cx - w / 2, above ? b.y - 4 - h : b.y + b.height + 4, w, h);
+    const maxW = i.pseudo ? 70 : i.boundary ? 90 : 100;
+    const { w, h } = textBox(i.el.name, maxW);
+    const cx = b.x + b.width / 2, cy = b.y + b.height / 2;
+    let cands = null;
+    if (i.pseudo) cands = [[cx - w / 2, b.y + b.height + 4]];
+    else if (i.boundary) {
+      cands = [[b.x + b.width + 2, b.y + b.height + 2], [b.x - 2 - w, b.y + b.height + 2], [b.x + b.width + 2, b.y - h]];
+    } else if (isA(i.el, 'bpmn:Event')) {
+      cands = [[cx - w / 2, b.y + b.height + 4], [cx - w / 2, b.y - 4 - h], [b.x + b.width + 4, cy - h / 2], [b.x - 4 - w, cy - h / 2]];
+    } else if (isA(i.el, 'bpmn:Gateway')) {
+      const n = textBox(i.el.name, 64);
+      cands = [
+        [cx - w / 2, b.y - 4 - h], [cx - w / 2, b.y + b.height + 4],
+        [b.x - w + 6, b.y - h + 2], [b.x + b.width - 6, b.y - h + 2],
+        [b.x - w + 6, b.y + b.height - 2], [b.x + b.width - 6, b.y + b.height - 2],
+        [b.x - n.w + 4, b.y + b.height - 2, n.w, n.h], [b.x + b.width - 4, b.y + b.height - 2, n.w, n.h],
+        [b.x - n.w + 4, b.y - n.h + 2, n.w, n.h], [b.x + b.width - 4, b.y - n.h + 2, n.w, n.h],
+      ];
     }
+    if (cands) requestLabel(di, w, h, cands, id);
+  }
+
+  // Resolve every label to the first candidate box that touches nothing; if
+  // none is free, take the one with the lowest penalty (flows 3, associations 1,
+  // shapes 6, other labels 4).
+  const segHits = (pts, r) => {
+    let n = 0;
+    for (let k = 0; k + 1 < pts.length; k++) {
+      const [x1, y1] = pts[k], [x2, y2] = pts[k + 1];
+      const lx = Math.min(x1, x2), hx = Math.max(x1, x2), ly = Math.min(y1, y2), hy = Math.max(y1, y2);
+      // 5px clearance so a label never visually touches a line
+      if (hx > r.x - 5 && lx < r.x + r.w + 5 && hy > r.y - 5 && ly < r.y + r.h + 5) n++;
+    }
+    return n;
+  };
+  const overlaps = (r, q) => r.x < q.x + q.w && r.x + r.w > q.x && r.y < q.y + q.h && r.y + r.h > q.y;
+  const placedLabels = [];
+  for (const req of labelReqs) {
+    let best = null;
+    for (const [x, yy, cw, ch] of req.cands) {
+      const r = { x: Math.round(x), y: Math.round(yy), w: cw ?? req.w, h: ch ?? req.h };
+      let score = 0;
+      for (const { pts, weight } of allSegs) score += segHits(pts, r) * weight;
+      for (const [id, b] of boxes) {
+        if (id !== req.selfId && overlaps(r, { x: b.x, y: b.y, w: b.width, h: b.height })) score += 6;
+      }
+      for (const q of placedLabels) if (overlaps(r, q)) score += 4;
+      if (!best || score < best.score) best = { score, r };
+      if (score === 0) break;
+    }
+    setLabel(req.di, best.r.x, best.r.y, best.r.w, best.r.h);
+    placedLabels.push(best.r);
   }
 
   const { xml: out } = await moddle.toXML(defs, { format: true });

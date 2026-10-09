@@ -73,6 +73,7 @@ Save to `diagrams/<slug>/` (slug: lowercase-hyphenated). Source file: `<slug>.bp
 - **Naming**: tasks are *verb + object*, ≤ 4 words ("Check completeness"). No acronyms the audience may not know — use the user's terminology.
 - **IDs**: unique, no spaces, descriptive prefixes (`Start_`, `Task_`, `Gw_`, `End_`, `Pool_`, `Lane_`, `Msg_`, `Exception_`, flows `F1…Fn`).
 - **Optional extras the renderer supports**: `dataStoreReference` / `dataObjectReference` with data associations (declare an `ioSpecification` with `dataInput`/`dataOutput`), `textAnnotation` + `association` (use for SLAs and business rules), boundary events, loops, pools without lanes.
+- **Notes and data**: keep each annotation ≤ 80 characters and attach at most 2 data objects/stores and 2 annotations to one element; anything longer belongs in the README. Every annotation must carry information the reader needs on the diagram (a rule, an SLA, an open point) — not a restatement of the task name.
 - **Not supported by the layout engine** — do not use: event sub-processes, expanded sub-processes with children, nested lane hierarchies deeper than flattening, choreography/conversation diagrams.
 - **Size limit**: ≈ 20 flow nodes per diagram. Beyond that, split.
 

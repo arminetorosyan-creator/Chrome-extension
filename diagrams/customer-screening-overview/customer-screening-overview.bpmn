@@ -1,0 +1,375 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Defs_ScreeningOverview" targetNamespace="http://example.com/bpmn/customer-screening-overview">
+  <bpmn:collaboration id="Collab_ScreeningOverview">
+    <bpmn:participant id="Pool_Company" name="Company" processRef="Process_Screening" />
+    <bpmn:participant id="Pool_ListProvider" name="List provider" />
+    <bpmn:participant id="Pool_AlertHandling" name="Alert Handling" />
+    <bpmn:messageFlow id="Msg_Lists" name="Consolidated list set" sourceRef="Pool_ListProvider" targetRef="Task_RunMatch" />
+    <bpmn:messageFlow id="Msg_Handoff" name="Alert and ownership result" sourceRef="Task_HandOff" targetRef="Pool_AlertHandling" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_Screening" name="Customer screening" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_Screening">
+      <bpmn:lane id="Lane_Onboarding" name="Onboarding">
+        <bpmn:flowNodeRef>Start_ApplicationReceived</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CollectValidate</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_DetermineScope</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_RecordClear</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_Clear</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_System" name="Screening system">
+        <bpmn:flowNodeRef>Task_RunMatch</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gw_Match</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CreateAlert</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Analyst" name="Compliance analyst">
+        <bpmn:flowNodeRef>Task_CheckOwnership</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gw_Threshold</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Exception_End_Escalated</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_HandOff</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_AlertRaised</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Start_ApplicationReceived" name="Application received">
+      <bpmn:outgoing>F1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="Task_CollectValidate" name="Collect and validate data">
+      <bpmn:incoming>F1</bpmn:incoming>
+      <bpmn:outgoing>F2</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:task id="Task_DetermineScope" name="Determine screening scope">
+      <bpmn:incoming>F2</bpmn:incoming>
+      <bpmn:outgoing>F3</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:serviceTask id="Task_RunMatch" name="Run automated match">
+      <bpmn:incoming>F3</bpmn:incoming>
+      <bpmn:outgoing>F4</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gw_Match" name="Potential match?" default="F5">
+      <bpmn:incoming>F4</bpmn:incoming>
+      <bpmn:outgoing>F5</bpmn:outgoing>
+      <bpmn:outgoing>F6</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="Task_RecordClear" name="Record clear result">
+      <bpmn:incoming>F5</bpmn:incoming>
+      <bpmn:outgoing>F7</bpmn:outgoing>
+      <bpmn:ioSpecification id="IoSpec_RecordClear">
+        <bpmn:dataOutput id="DataOut_ClearLog" name="Clear result" />
+        <bpmn:inputSet id="InputSet_RecordClear" />
+        <bpmn:outputSet id="OutputSet_RecordClear">
+          <bpmn:dataOutputRefs>DataOut_ClearLog</bpmn:dataOutputRefs>
+        </bpmn:outputSet>
+      </bpmn:ioSpecification>
+      <bpmn:dataOutputAssociation id="DOA_ClearLog">
+        <bpmn:sourceRef>DataOut_ClearLog</bpmn:sourceRef>
+        <bpmn:targetRef>Store_AuditLog</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
+    </bpmn:task>
+    <bpmn:endEvent id="End_Clear" name="Clear – onboarding continues">
+      <bpmn:incoming>F7</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="Task_CreateAlert" name="Create alert">
+      <bpmn:incoming>F6</bpmn:incoming>
+      <bpmn:outgoing>F8</bpmn:outgoing>
+      <bpmn:ioSpecification id="IoSpec_CreateAlert">
+        <bpmn:dataOutput id="DataOut_AlertLog" name="Alert record" />
+        <bpmn:dataOutput id="DataOut_Status" name="Account status" />
+        <bpmn:inputSet id="InputSet_CreateAlert" />
+        <bpmn:outputSet id="OutputSet_CreateAlert">
+          <bpmn:dataOutputRefs>DataOut_AlertLog</bpmn:dataOutputRefs>
+          <bpmn:dataOutputRefs>DataOut_Status</bpmn:dataOutputRefs>
+        </bpmn:outputSet>
+      </bpmn:ioSpecification>
+      <bpmn:dataOutputAssociation id="DOA_Status">
+        <bpmn:sourceRef>DataOut_Status</bpmn:sourceRef>
+        <bpmn:targetRef>Data_Pending</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
+      <bpmn:dataOutputAssociation id="DOA_AlertLog">
+        <bpmn:sourceRef>DataOut_AlertLog</bpmn:sourceRef>
+        <bpmn:targetRef>Store_AuditLogAlert</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
+    </bpmn:serviceTask>
+    <bpmn:userTask id="Task_CheckOwnership" name="Check ownership">
+      <bpmn:incoming>F8</bpmn:incoming>
+      <bpmn:outgoing>F9</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="Gw_Threshold" name="Threshold met?" default="F11">
+      <bpmn:incoming>F9</bpmn:incoming>
+      <bpmn:outgoing>F10</bpmn:outgoing>
+      <bpmn:outgoing>F11</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="Exception_End_Escalated" name="Escalated (ownership threshold met)">
+      <bpmn:incoming>F10</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sendTask id="Task_HandOff" name="Hand off to Alert Handling">
+      <bpmn:incoming>F11</bpmn:incoming>
+      <bpmn:outgoing>F12</bpmn:outgoing>
+    </bpmn:sendTask>
+    <bpmn:endEvent id="End_AlertRaised" name="Alert raised – handed to Alert Handling">
+      <bpmn:incoming>F12</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:dataStoreReference id="Store_AuditLog" name="Audit log" />
+    <bpmn:dataStoreReference id="Store_AuditLogAlert" name="Audit log" />
+    <bpmn:dataObject id="DataObj_Pending" name="Account status: Pending" />
+    <bpmn:dataObjectReference id="Data_Pending" name="Account status: Pending" dataObjectRef="DataObj_Pending" />
+    <bpmn:sequenceFlow id="F1" sourceRef="Start_ApplicationReceived" targetRef="Task_CollectValidate" />
+    <bpmn:sequenceFlow id="F2" sourceRef="Task_CollectValidate" targetRef="Task_DetermineScope" />
+    <bpmn:sequenceFlow id="F3" sourceRef="Task_DetermineScope" targetRef="Task_RunMatch" />
+    <bpmn:sequenceFlow id="F4" sourceRef="Task_RunMatch" targetRef="Gw_Match" />
+    <bpmn:sequenceFlow id="F5" name="No" sourceRef="Gw_Match" targetRef="Task_RecordClear" />
+    <bpmn:sequenceFlow id="F6" name="Yes" sourceRef="Gw_Match" targetRef="Task_CreateAlert">
+      <bpmn:conditionExpression>potential match found</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F7" sourceRef="Task_RecordClear" targetRef="End_Clear" />
+    <bpmn:sequenceFlow id="F8" sourceRef="Task_CreateAlert" targetRef="Task_CheckOwnership" />
+    <bpmn:sequenceFlow id="F9" sourceRef="Task_CheckOwnership" targetRef="Gw_Threshold" />
+    <bpmn:sequenceFlow id="F10" name="Yes" sourceRef="Gw_Threshold" targetRef="Exception_End_Escalated">
+      <bpmn:conditionExpression>aggregate stakes at or above threshold</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F11" name="No" sourceRef="Gw_Threshold" targetRef="Task_HandOff" />
+    <bpmn:sequenceFlow id="F12" sourceRef="Task_HandOff" targetRef="End_AlertRaised" />
+    <bpmn:textAnnotation id="Note_Collect">
+      <bpmn:text>Names, aliases, date of birth, nationality, address, registration number, UBOs, directors</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Assoc_Collect" sourceRef="Task_CollectValidate" targetRef="Note_Collect" />
+    <bpmn:textAnnotation id="Note_Scope">
+      <bpmn:text>Customer, UBOs, controllers, authorised signatories</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Assoc_Scope" sourceRef="Task_DetermineScope" targetRef="Note_Scope" />
+    <bpmn:textAnnotation id="Note_Match">
+      <bpmn:text>Fuzzy and phonetic matching with transliteration</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Assoc_Match" sourceRef="Task_RunMatch" targetRef="Note_Match" />
+    <bpmn:textAnnotation id="Note_Pending">
+      <bpmn:text>Account not activated while hit unresolved</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Assoc_Pending" sourceRef="Task_CreateAlert" targetRef="Note_Pending" />
+    <bpmn:textAnnotation id="Note_Ownership">
+      <bpmn:text>Aggregate stakes of listed persons; escalate if the threshold is met (threshold to be confirmed)</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Assoc_Ownership" sourceRef="Task_CheckOwnership" targetRef="Note_Ownership" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collab_ScreeningOverview">
+      <bpmndi:BPMNShape id="Pool_Company_di" bpmnElement="Pool_Company" isHorizontal="true" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#546E7A" bioc:stroke="#546E7A">
+        <dc:Bounds x="0" y="0" width="1790" height="910" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Onboarding_di" bpmnElement="Lane_Onboarding" isHorizontal="true" color:background-color="#F7F9FB" bioc:fill="#F7F9FB" color:border-color="#90A4AE" bioc:stroke="#90A4AE">
+        <dc:Bounds x="30" y="0" width="1760" height="260" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_System_di" bpmnElement="Lane_System" isHorizontal="true" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#90A4AE" bioc:stroke="#90A4AE">
+        <dc:Bounds x="30" y="260" width="1760" height="390" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Analyst_di" bpmnElement="Lane_Analyst" isHorizontal="true" color:background-color="#F7F9FB" bioc:fill="#F7F9FB" color:border-color="#90A4AE" bioc:stroke="#90A4AE">
+        <dc:Bounds x="30" y="650" width="1760" height="260" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Pool_ListProvider_di" bpmnElement="Pool_ListProvider" isHorizontal="true" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#546E7A" bioc:stroke="#546E7A">
+        <dc:Bounds x="0" y="970" width="1790" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Pool_AlertHandling_di" bpmnElement="Pool_AlertHandling" isHorizontal="true" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#546E7A" bioc:stroke="#546E7A">
+        <dc:Bounds x="0" y="1100" width="1790" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_ApplicationReceived_di" bpmnElement="Start_ApplicationReceived" color:background-color="#E8F5E9" bioc:fill="#E8F5E9" color:border-color="#2E7D32" bioc:stroke="#2E7D32">
+        <dc:Bounds x="137" y="47" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="105" y="87" width="100" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CollectValidate_di" bpmnElement="Task_CollectValidate" color:background-color="#EAF2FB" bioc:fill="#EAF2FB" color:border-color="#2F5D8A" bioc:stroke="#2F5D8A">
+        <dc:Bounds x="275" y="25" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_DetermineScope_di" bpmnElement="Task_DetermineScope" color:background-color="#EAF2FB" bioc:fill="#EAF2FB" color:border-color="#2F5D8A" bioc:stroke="#2F5D8A">
+        <dc:Bounds x="445" y="25" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_RunMatch_di" bpmnElement="Task_RunMatch" color:background-color="#EAF2FB" bioc:fill="#EAF2FB" color:border-color="#2F5D8A" bioc:stroke="#2F5D8A">
+        <dc:Bounds x="615" y="285" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gw_Match_di" bpmnElement="Gw_Match" isMarkerVisible="true" color:background-color="#FFF8E1" bioc:fill="#FFF8E1" color:border-color="#B7791F" bioc:stroke="#B7791F">
+        <dc:Bounds x="810" y="300" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="785" y="354" width="100" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_RecordClear_di" bpmnElement="Task_RecordClear" color:background-color="#EAF2FB" bioc:fill="#EAF2FB" color:border-color="#2F5D8A" bioc:stroke="#2F5D8A">
+        <dc:Bounds x="955" y="25" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Clear_di" bpmnElement="End_Clear" color:background-color="#ECEFF1" bioc:fill="#ECEFF1" color:border-color="#37474F" bioc:stroke="#37474F">
+        <dc:Bounds x="1157" y="47" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1125" y="87" width="100" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CreateAlert_di" bpmnElement="Task_CreateAlert" color:background-color="#EAF2FB" bioc:fill="#EAF2FB" color:border-color="#2F5D8A" bioc:stroke="#2F5D8A">
+        <dc:Bounds x="955" y="285" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CheckOwnership_di" bpmnElement="Task_CheckOwnership" color:background-color="#EAF2FB" bioc:fill="#EAF2FB" color:border-color="#2F5D8A" bioc:stroke="#2F5D8A">
+        <dc:Bounds x="1125" y="675" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gw_Threshold_di" bpmnElement="Gw_Threshold" isMarkerVisible="true" color:background-color="#FFF8E1" bioc:fill="#FFF8E1" color:border-color="#B7791F" bioc:stroke="#B7791F">
+        <dc:Bounds x="1320" y="690" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1296" y="670" width="99" height="16" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Exception_End_Escalated_di" bpmnElement="Exception_End_Escalated" color:background-color="#FDECEA" bioc:fill="#FDECEA" color:border-color="#C62828" bioc:stroke="#C62828">
+        <dc:Bounds x="1497" y="697" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1465" y="737" width="100" height="44" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_HandOff_di" bpmnElement="Task_HandOff" color:background-color="#EAF2FB" bioc:fill="#EAF2FB" color:border-color="#2F5D8A" bioc:stroke="#2F5D8A">
+        <dc:Bounds x="1465" y="805" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_AlertRaised_di" bpmnElement="End_AlertRaised" color:background-color="#ECEFF1" bioc:fill="#ECEFF1" color:border-color="#37474F" bioc:stroke="#37474F">
+        <dc:Bounds x="1667" y="827" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1635" y="867" width="100" height="44" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Store_AuditLog_di" bpmnElement="Store_AuditLog" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#546E7A" bioc:stroke="#546E7A">
+        <dc:Bounds x="980" y="170" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="972" y="224" width="66" height="16" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Store_AuditLogAlert_di" bpmnElement="Store_AuditLogAlert" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#546E7A" bioc:stroke="#546E7A">
+        <dc:Bounds x="935" y="430" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="927" y="484" width="66" height="16" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Data_Pending_di" bpmnElement="Data_Pending" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#546E7A" bioc:stroke="#546E7A">
+        <dc:Bounds x="1032" y="430" width="36" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1015" y="484" width="70" height="44" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Note_Pending_di" bpmnElement="Note_Pending" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#78909C" bioc:stroke="#78909C">
+        <dc:Bounds x="930" y="557" width="150" height="56" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Note_Collect_di" bpmnElement="Note_Collect" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#78909C" bioc:stroke="#78909C">
+        <dc:Bounds x="250" y="153" width="150" height="84" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Note_Scope_di" bpmnElement="Note_Scope" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#78909C" bioc:stroke="#78909C">
+        <dc:Bounds x="420" y="167" width="150" height="56" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Note_Match_di" bpmnElement="Note_Match" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#78909C" bioc:stroke="#78909C">
+        <dc:Bounds x="503" y="427" width="150" height="56" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Note_Ownership_di" bpmnElement="Note_Ownership" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#78909C" bioc:stroke="#78909C">
+        <dc:Bounds x="1100" y="803" width="150" height="84" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="F1_di" bpmnElement="F1" color:border-color="#37474F" bioc:stroke="#37474F">
+        <di:waypoint x="173" y="65" />
+        <di:waypoint x="275" y="65" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F2_di" bpmnElement="F2" color:border-color="#37474F" bioc:stroke="#37474F">
+        <di:waypoint x="375" y="65" />
+        <di:waypoint x="445" y="65" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F3_di" bpmnElement="F3" color:border-color="#37474F" bioc:stroke="#37474F">
+        <di:waypoint x="545" y="65" />
+        <di:waypoint x="580" y="65" />
+        <di:waypoint x="580" y="325" />
+        <di:waypoint x="615" y="325" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F4_di" bpmnElement="F4" color:border-color="#37474F" bioc:stroke="#37474F">
+        <di:waypoint x="715" y="325" />
+        <di:waypoint x="810" y="325" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F5_di" bpmnElement="F5" color:border-color="#37474F" bioc:stroke="#37474F">
+        <di:waypoint x="835" y="300" />
+        <di:waypoint x="835" y="65" />
+        <di:waypoint x="955" y="65" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="841" y="280" width="24" height="16" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F6_di" bpmnElement="F6" color:border-color="#37474F" bioc:stroke="#37474F">
+        <di:waypoint x="860" y="325" />
+        <di:waypoint x="955" y="325" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="864" y="306" width="26" height="16" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F7_di" bpmnElement="F7" color:border-color="#37474F" bioc:stroke="#37474F">
+        <di:waypoint x="1055" y="65" />
+        <di:waypoint x="1157" y="65" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F8_di" bpmnElement="F8" color:border-color="#37474F" bioc:stroke="#37474F">
+        <di:waypoint x="1055" y="325" />
+        <di:waypoint x="1090" y="325" />
+        <di:waypoint x="1090" y="715" />
+        <di:waypoint x="1125" y="715" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F9_di" bpmnElement="F9" color:border-color="#37474F" bioc:stroke="#37474F">
+        <di:waypoint x="1225" y="715" />
+        <di:waypoint x="1320" y="715" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F10_di" bpmnElement="F10" color:background-color="#FDECEA" bioc:fill="#FDECEA" color:border-color="#C62828" bioc:stroke="#C62828">
+        <di:waypoint x="1370" y="715" />
+        <di:waypoint x="1497" y="715" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1374" y="696" width="26" height="16" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F11_di" bpmnElement="F11" color:border-color="#37474F" bioc:stroke="#37474F">
+        <di:waypoint x="1345" y="740" />
+        <di:waypoint x="1345" y="845" />
+        <di:waypoint x="1465" y="845" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1351" y="744" width="24" height="16" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F12_di" bpmnElement="F12" color:border-color="#37474F" bioc:stroke="#37474F">
+        <di:waypoint x="1565" y="845" />
+        <di:waypoint x="1667" y="845" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Msg_Lists_di" bpmnElement="Msg_Lists" color:border-color="#546E7A" bioc:stroke="#546E7A">
+        <di:waypoint x="665" y="970" />
+        <di:waypoint x="665" y="365" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="671" y="653" width="110" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Msg_Handoff_di" bpmnElement="Msg_Handoff" color:border-color="#546E7A" bioc:stroke="#546E7A">
+        <di:waypoint x="1515" y="885" />
+        <di:waypoint x="1515" y="1100" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1521" y="978" width="110" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_Collect_di" bpmnElement="Assoc_Collect" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#78909C" bioc:stroke="#78909C">
+        <di:waypoint x="325" y="105" />
+        <di:waypoint x="325" y="153" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_Scope_di" bpmnElement="Assoc_Scope" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#78909C" bioc:stroke="#78909C">
+        <di:waypoint x="495" y="105" />
+        <di:waypoint x="495" y="167" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_Match_di" bpmnElement="Assoc_Match" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#78909C" bioc:stroke="#78909C">
+        <di:waypoint x="623" y="365" />
+        <di:waypoint x="623" y="427" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_Pending_di" bpmnElement="Assoc_Pending" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#78909C" bioc:stroke="#78909C">
+        <di:waypoint x="1005" y="365" />
+        <di:waypoint x="1005" y="557" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_Ownership_di" bpmnElement="Assoc_Ownership" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#78909C" bioc:stroke="#78909C">
+        <di:waypoint x="1175" y="755" />
+        <di:waypoint x="1175" y="803" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="DOA_ClearLog_di" bpmnElement="DOA_ClearLog" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#546E7A" bioc:stroke="#546E7A">
+        <di:waypoint x="1005" y="105" />
+        <di:waypoint x="1005" y="170" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="DOA_Status_di" bpmnElement="DOA_Status" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#546E7A" bioc:stroke="#546E7A">
+        <di:waypoint x="1050" y="365" />
+        <di:waypoint x="1050" y="430" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="DOA_AlertLog_di" bpmnElement="DOA_AlertLog" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#546E7A" bioc:stroke="#546E7A">
+        <di:waypoint x="960" y="365" />
+        <di:waypoint x="960" y="430" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

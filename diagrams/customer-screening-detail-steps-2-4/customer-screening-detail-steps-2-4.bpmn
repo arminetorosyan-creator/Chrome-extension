@@ -1,0 +1,370 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Defs_ScreeningDetail" targetNamespace="http://example.com/bpmn/customer-screening-detail-steps-2-4">
+  <bpmn:collaboration id="Collab_ScreeningDetail">
+    <bpmn:participant id="Pool_Company" name="Company" processRef="Process_ScreeningDetail" />
+    <bpmn:participant id="Pool_ListProvider" name="List provider" />
+    <bpmn:messageFlow id="Msg_Lists" name="Consolidated list set" sourceRef="Pool_ListProvider" targetRef="Task_Match" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_ScreeningDetail" name="Customer screening steps 2-4" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_Detail">
+      <bpmn:lane id="Lane_Onboarding" name="Onboarding">
+        <bpmn:flowNodeRef>Start_ApplicationReceived</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CaptureKyc</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gw_MergeData</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Validate</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gw_Valid</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Exception_RequestData</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_IdentifySubjects</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gw_MergeResult</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_ResultReady</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_System" name="Screening system">
+        <bpmn:flowNodeRef>Task_Normalise</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gw_MergeMatch</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Match</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gw_Available</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gw_RetryLimit</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Exception_RetryMatch</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Analyst" name="Compliance analyst">
+        <bpmn:flowNodeRef>Exception_ManualScreen</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Start_ApplicationReceived" name="Application received">
+      <bpmn:outgoing>F1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="Task_CaptureKyc" name="Capture KYC data">
+      <bpmn:incoming>F1</bpmn:incoming>
+      <bpmn:outgoing>F2</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="Gw_MergeData">
+      <bpmn:incoming>F2</bpmn:incoming>
+      <bpmn:incoming>F6</bpmn:incoming>
+      <bpmn:outgoing>F3</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="Task_Validate" name="Validate attributes">
+      <bpmn:incoming>F3</bpmn:incoming>
+      <bpmn:outgoing>F4</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="Gw_Valid" name="Attributes valid and complete?" default="F5">
+      <bpmn:incoming>F4</bpmn:incoming>
+      <bpmn:outgoing>F5</bpmn:outgoing>
+      <bpmn:outgoing>F7</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="Exception_RequestData" name="Request missing data">
+      <bpmn:incoming>F5</bpmn:incoming>
+      <bpmn:outgoing>F6</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:task id="Task_IdentifySubjects" name="Identify persons in scope">
+      <bpmn:incoming>F7</bpmn:incoming>
+      <bpmn:outgoing>F8</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:serviceTask id="Task_Normalise" name="Prepare names for matching">
+      <bpmn:incoming>F8</bpmn:incoming>
+      <bpmn:outgoing>F9</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gw_MergeMatch">
+      <bpmn:incoming>F9</bpmn:incoming>
+      <bpmn:incoming>F14</bpmn:incoming>
+      <bpmn:outgoing>F10</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="Task_Match" name="Match against lists">
+      <bpmn:incoming>F10</bpmn:incoming>
+      <bpmn:outgoing>F11</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gw_Available" name="Screening service available?" default="F13">
+      <bpmn:incoming>F11</bpmn:incoming>
+      <bpmn:outgoing>F12</bpmn:outgoing>
+      <bpmn:outgoing>F13</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="Gw_RetryLimit" name="Retry limit reached?" default="F15">
+      <bpmn:incoming>F13</bpmn:incoming>
+      <bpmn:outgoing>F15</bpmn:outgoing>
+      <bpmn:outgoing>F16</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="Exception_RetryMatch" name="Retry match">
+      <bpmn:incoming>F15</bpmn:incoming>
+      <bpmn:outgoing>F14</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:userTask id="Exception_ManualScreen" name="Screen manually">
+      <bpmn:incoming>F16</bpmn:incoming>
+      <bpmn:outgoing>F17</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="Gw_MergeResult">
+      <bpmn:incoming>F12</bpmn:incoming>
+      <bpmn:incoming>F17</bpmn:incoming>
+      <bpmn:outgoing>F18</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="End_ResultReady" name="Match result ready (to step 5)">
+      <bpmn:incoming>F18</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="F1" sourceRef="Start_ApplicationReceived" targetRef="Task_CaptureKyc" />
+    <bpmn:sequenceFlow id="F2" sourceRef="Task_CaptureKyc" targetRef="Gw_MergeData" />
+    <bpmn:sequenceFlow id="F3" sourceRef="Gw_MergeData" targetRef="Task_Validate" />
+    <bpmn:sequenceFlow id="F4" sourceRef="Task_Validate" targetRef="Gw_Valid" />
+    <bpmn:sequenceFlow id="F5" name="No" sourceRef="Gw_Valid" targetRef="Exception_RequestData" />
+    <bpmn:sequenceFlow id="F6" sourceRef="Exception_RequestData" targetRef="Gw_MergeData" />
+    <bpmn:sequenceFlow id="F7" name="Yes" sourceRef="Gw_Valid" targetRef="Task_IdentifySubjects">
+      <bpmn:conditionExpression>all required attributes valid</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F8" sourceRef="Task_IdentifySubjects" targetRef="Task_Normalise" />
+    <bpmn:sequenceFlow id="F9" sourceRef="Task_Normalise" targetRef="Gw_MergeMatch" />
+    <bpmn:sequenceFlow id="F10" sourceRef="Gw_MergeMatch" targetRef="Task_Match" />
+    <bpmn:sequenceFlow id="F11" sourceRef="Task_Match" targetRef="Gw_Available" />
+    <bpmn:sequenceFlow id="F12" name="Yes" sourceRef="Gw_Available" targetRef="Gw_MergeResult">
+      <bpmn:conditionExpression>service responded</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F13" name="No" sourceRef="Gw_Available" targetRef="Gw_RetryLimit" />
+    <bpmn:sequenceFlow id="F14" sourceRef="Exception_RetryMatch" targetRef="Gw_MergeMatch" />
+    <bpmn:sequenceFlow id="F15" name="No" sourceRef="Gw_RetryLimit" targetRef="Exception_RetryMatch" />
+    <bpmn:sequenceFlow id="F16" name="Yes" sourceRef="Gw_RetryLimit" targetRef="Exception_ManualScreen">
+      <bpmn:conditionExpression>retry limit reached</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F17" sourceRef="Exception_ManualScreen" targetRef="Gw_MergeResult" />
+    <bpmn:sequenceFlow id="F18" sourceRef="Gw_MergeResult" targetRef="End_ResultReady" />
+    <bpmn:textAnnotation id="Note_Attributes">
+      <bpmn:text>Names, aliases, date of birth, nationality, address, registration number, UBOs, directors</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Assoc_Attributes" sourceRef="Task_Validate" targetRef="Note_Attributes" />
+    <bpmn:textAnnotation id="Note_Scope">
+      <bpmn:text>Customer, UBOs, controllers, authorised signatories</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Assoc_Scope" sourceRef="Task_IdentifySubjects" targetRef="Note_Scope" />
+    <bpmn:textAnnotation id="Note_Names">
+      <bpmn:text>Aliases and transliteration variants</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Assoc_Names" sourceRef="Task_Normalise" targetRef="Note_Names" />
+    <bpmn:textAnnotation id="Note_Fuzzy">
+      <bpmn:text>Fuzzy and phonetic matching</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Assoc_Fuzzy" sourceRef="Task_Match" targetRef="Note_Fuzzy" />
+    <bpmn:textAnnotation id="Note_Limits">
+      <bpmn:text>Maximum attempts and retry count: to be confirmed</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Assoc_Limits" sourceRef="Gw_RetryLimit" targetRef="Note_Limits" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collab_ScreeningDetail">
+      <bpmndi:BPMNShape id="Pool_Company_di" bpmnElement="Pool_Company" isHorizontal="true" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#546E7A" bioc:stroke="#546E7A">
+        <dc:Bounds x="0" y="0" width="2470" height="780" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Onboarding_di" bpmnElement="Lane_Onboarding" isHorizontal="true" color:background-color="#F7F9FB" bioc:fill="#F7F9FB" color:border-color="#90A4AE" bioc:stroke="#90A4AE">
+        <dc:Bounds x="30" y="0" width="2440" height="390" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_System_di" bpmnElement="Lane_System" isHorizontal="true" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#90A4AE" bioc:stroke="#90A4AE">
+        <dc:Bounds x="30" y="390" width="2440" height="260" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Analyst_di" bpmnElement="Lane_Analyst" isHorizontal="true" color:background-color="#F7F9FB" bioc:fill="#F7F9FB" color:border-color="#90A4AE" bioc:stroke="#90A4AE">
+        <dc:Bounds x="30" y="650" width="2440" height="130" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Pool_ListProvider_di" bpmnElement="Pool_ListProvider" isHorizontal="true" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#546E7A" bioc:stroke="#546E7A">
+        <dc:Bounds x="0" y="840" width="2470" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_ApplicationReceived_di" bpmnElement="Start_ApplicationReceived" color:background-color="#E8F5E9" bioc:fill="#E8F5E9" color:border-color="#2E7D32" bioc:stroke="#2E7D32">
+        <dc:Bounds x="137" y="47" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="105" y="87" width="100" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CaptureKyc_di" bpmnElement="Task_CaptureKyc" color:background-color="#EAF2FB" bioc:fill="#EAF2FB" color:border-color="#2F5D8A" bioc:stroke="#2F5D8A">
+        <dc:Bounds x="275" y="25" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gw_MergeData_di" bpmnElement="Gw_MergeData" isMarkerVisible="true" color:background-color="#FFF8E1" bioc:fill="#FFF8E1" color:border-color="#B7791F" bioc:stroke="#B7791F">
+        <dc:Bounds x="470" y="40" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Validate_di" bpmnElement="Task_Validate" color:background-color="#EAF2FB" bioc:fill="#EAF2FB" color:border-color="#2F5D8A" bioc:stroke="#2F5D8A">
+        <dc:Bounds x="615" y="25" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gw_Valid_di" bpmnElement="Gw_Valid" isMarkerVisible="true" color:background-color="#FFF8E1" bioc:fill="#FFF8E1" color:border-color="#B7791F" bioc:stroke="#B7791F">
+        <dc:Bounds x="810" y="40" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="716" y="88" width="100" height="44" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Exception_RequestData_di" bpmnElement="Exception_RequestData" color:background-color="#FDECEA" bioc:fill="#FDECEA" color:border-color="#C62828" bioc:stroke="#C62828">
+        <dc:Bounds x="955" y="25" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_IdentifySubjects_di" bpmnElement="Task_IdentifySubjects" color:background-color="#EAF2FB" bioc:fill="#EAF2FB" color:border-color="#2F5D8A" bioc:stroke="#2F5D8A">
+        <dc:Bounds x="955" y="155" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Normalise_di" bpmnElement="Task_Normalise" color:background-color="#EAF2FB" bioc:fill="#EAF2FB" color:border-color="#2F5D8A" bioc:stroke="#2F5D8A">
+        <dc:Bounds x="1125" y="415" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gw_MergeMatch_di" bpmnElement="Gw_MergeMatch" isMarkerVisible="true" color:background-color="#FFF8E1" bioc:fill="#FFF8E1" color:border-color="#B7791F" bioc:stroke="#B7791F">
+        <dc:Bounds x="1320" y="430" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Match_di" bpmnElement="Task_Match" color:background-color="#EAF2FB" bioc:fill="#EAF2FB" color:border-color="#2F5D8A" bioc:stroke="#2F5D8A">
+        <dc:Bounds x="1465" y="415" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gw_Available_di" bpmnElement="Gw_Available" isMarkerVisible="true" color:background-color="#FFF8E1" bioc:fill="#FFF8E1" color:border-color="#B7791F" bioc:stroke="#B7791F">
+        <dc:Bounds x="1660" y="430" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1635" y="484" width="100" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gw_RetryLimit_di" bpmnElement="Gw_RetryLimit" isMarkerVisible="true" color:background-color="#FFF8E1" bioc:fill="#FFF8E1" color:border-color="#B7791F" bioc:stroke="#B7791F">
+        <dc:Bounds x="1830" y="430" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1736" y="478" width="100" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Exception_RetryMatch_di" bpmnElement="Exception_RetryMatch" color:background-color="#FDECEA" bioc:fill="#FDECEA" color:border-color="#C62828" bioc:stroke="#C62828">
+        <dc:Bounds x="1975" y="415" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Exception_ManualScreen_di" bpmnElement="Exception_ManualScreen" color:background-color="#FDECEA" bioc:fill="#FDECEA" color:border-color="#C62828" bioc:stroke="#C62828">
+        <dc:Bounds x="1975" y="675" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gw_MergeResult_di" bpmnElement="Gw_MergeResult" isMarkerVisible="true" color:background-color="#FFF8E1" bioc:fill="#FFF8E1" color:border-color="#B7791F" bioc:stroke="#B7791F">
+        <dc:Bounds x="2170" y="40" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_ResultReady_di" bpmnElement="End_ResultReady" color:background-color="#ECEFF1" bioc:fill="#ECEFF1" color:border-color="#37474F" bioc:stroke="#37474F">
+        <dc:Bounds x="2347" y="47" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2315" y="87" width="100" height="44" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Note_Attributes_di" bpmnElement="Note_Attributes" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#78909C" bioc:stroke="#78909C">
+        <dc:Bounds x="590" y="153" width="150" height="84" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Note_Scope_di" bpmnElement="Note_Scope" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#78909C" bioc:stroke="#78909C">
+        <dc:Bounds x="930" y="297" width="150" height="56" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Note_Names_di" bpmnElement="Note_Names" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#78909C" bioc:stroke="#78909C">
+        <dc:Bounds x="1100" y="564" width="150" height="42" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Note_Fuzzy_di" bpmnElement="Note_Fuzzy" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#78909C" bioc:stroke="#78909C">
+        <dc:Bounds x="1353" y="564" width="150" height="42" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Note_Limits_di" bpmnElement="Note_Limits" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#78909C" bioc:stroke="#78909C">
+        <dc:Bounds x="1780" y="557" width="150" height="56" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="F1_di" bpmnElement="F1" color:border-color="#37474F" bioc:stroke="#37474F">
+        <di:waypoint x="173" y="65" />
+        <di:waypoint x="275" y="65" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F2_di" bpmnElement="F2" color:border-color="#37474F" bioc:stroke="#37474F">
+        <di:waypoint x="375" y="65" />
+        <di:waypoint x="470" y="65" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F3_di" bpmnElement="F3" color:border-color="#37474F" bioc:stroke="#37474F">
+        <di:waypoint x="520" y="65" />
+        <di:waypoint x="615" y="65" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F4_di" bpmnElement="F4" color:border-color="#37474F" bioc:stroke="#37474F">
+        <di:waypoint x="715" y="65" />
+        <di:waypoint x="810" y="65" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F5_di" bpmnElement="F5" color:background-color="#FDECEA" bioc:fill="#FDECEA" color:border-color="#C62828" bioc:stroke="#C62828">
+        <di:waypoint x="860" y="65" />
+        <di:waypoint x="955" y="65" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="864" y="46" width="24" height="16" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F6_di" bpmnElement="F6" color:background-color="#FDECEA" bioc:fill="#FDECEA" color:border-color="#C62828" bioc:stroke="#C62828">
+        <di:waypoint x="1005" y="25" />
+        <di:waypoint x="1005" y="13" />
+        <di:waypoint x="495" y="13" />
+        <di:waypoint x="495" y="40" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F7_di" bpmnElement="F7" color:border-color="#37474F" bioc:stroke="#37474F">
+        <di:waypoint x="835" y="90" />
+        <di:waypoint x="835" y="195" />
+        <di:waypoint x="955" y="195" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="841" y="94" width="26" height="16" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F8_di" bpmnElement="F8" color:border-color="#37474F" bioc:stroke="#37474F">
+        <di:waypoint x="1055" y="195" />
+        <di:waypoint x="1090" y="195" />
+        <di:waypoint x="1090" y="455" />
+        <di:waypoint x="1125" y="455" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F9_di" bpmnElement="F9" color:border-color="#37474F" bioc:stroke="#37474F">
+        <di:waypoint x="1225" y="455" />
+        <di:waypoint x="1320" y="455" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F10_di" bpmnElement="F10" color:border-color="#37474F" bioc:stroke="#37474F">
+        <di:waypoint x="1370" y="455" />
+        <di:waypoint x="1465" y="455" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F11_di" bpmnElement="F11" color:border-color="#37474F" bioc:stroke="#37474F">
+        <di:waypoint x="1565" y="455" />
+        <di:waypoint x="1660" y="455" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F12_di" bpmnElement="F12" color:border-color="#37474F" bioc:stroke="#37474F">
+        <di:waypoint x="1685" y="430" />
+        <di:waypoint x="1685" y="65" />
+        <di:waypoint x="2170" y="65" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1691" y="410" width="26" height="16" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F13_di" bpmnElement="F13" color:border-color="#37474F" bioc:stroke="#37474F">
+        <di:waypoint x="1710" y="455" />
+        <di:waypoint x="1830" y="455" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1714" y="436" width="24" height="16" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F14_di" bpmnElement="F14" color:background-color="#FDECEA" bioc:fill="#FDECEA" color:border-color="#C62828" bioc:stroke="#C62828">
+        <di:waypoint x="2025" y="415" />
+        <di:waypoint x="2025" y="403" />
+        <di:waypoint x="1345" y="403" />
+        <di:waypoint x="1345" y="430" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F15_di" bpmnElement="F15" color:background-color="#FDECEA" bioc:fill="#FDECEA" color:border-color="#C62828" bioc:stroke="#C62828">
+        <di:waypoint x="1880" y="455" />
+        <di:waypoint x="1975" y="455" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1884" y="436" width="24" height="16" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F16_di" bpmnElement="F16" color:background-color="#FDECEA" bioc:fill="#FDECEA" color:border-color="#C62828" bioc:stroke="#C62828">
+        <di:waypoint x="1855" y="480" />
+        <di:waypoint x="1855" y="715" />
+        <di:waypoint x="1975" y="715" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1861" y="484" width="26" height="16" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F17_di" bpmnElement="F17" color:background-color="#FDECEA" bioc:fill="#FDECEA" color:border-color="#C62828" bioc:stroke="#C62828">
+        <di:waypoint x="2075" y="715" />
+        <di:waypoint x="2195" y="715" />
+        <di:waypoint x="2195" y="90" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F18_di" bpmnElement="F18" color:border-color="#37474F" bioc:stroke="#37474F">
+        <di:waypoint x="2220" y="65" />
+        <di:waypoint x="2347" y="65" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Msg_Lists_di" bpmnElement="Msg_Lists" color:border-color="#546E7A" bioc:stroke="#546E7A">
+        <di:waypoint x="1515" y="840" />
+        <di:waypoint x="1515" y="495" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1521" y="653" width="110" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_Attributes_di" bpmnElement="Assoc_Attributes" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#78909C" bioc:stroke="#78909C">
+        <di:waypoint x="665" y="105" />
+        <di:waypoint x="665" y="153" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_Scope_di" bpmnElement="Assoc_Scope" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#78909C" bioc:stroke="#78909C">
+        <di:waypoint x="1005" y="235" />
+        <di:waypoint x="1005" y="297" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_Names_di" bpmnElement="Assoc_Names" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#78909C" bioc:stroke="#78909C">
+        <di:waypoint x="1175" y="495" />
+        <di:waypoint x="1175" y="564" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_Fuzzy_di" bpmnElement="Assoc_Fuzzy" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#78909C" bioc:stroke="#78909C">
+        <di:waypoint x="1473" y="495" />
+        <di:waypoint x="1473" y="564" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_Limits_di" bpmnElement="Assoc_Limits" color:background-color="#FFFFFF" bioc:fill="#FFFFFF" color:border-color="#78909C" bioc:stroke="#78909C">
+        <di:waypoint x="1835" y="480" />
+        <di:waypoint x="1835" y="557" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

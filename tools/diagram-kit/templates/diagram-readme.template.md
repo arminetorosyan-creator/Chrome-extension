@@ -50,8 +50,8 @@ Red elements show exception paths.
 
 ## How to edit
 
-- `.bpmn`: open in [bpmn.io demo](https://demo.bpmn.io) or Camunda Modeler. Layout is generated; re-run the renderer after semantic changes.
-- `.puml`: edit in any PlantUML editor; render with `node tools/diagram-kit/render.mjs <file>`.
+- `.bpmn` (delete this bullet for PlantUML-only diagrams): open in [bpmn.io demo](https://demo.bpmn.io) or Camunda Modeler. Layout is generated; re-run the renderer after semantic changes.
+- `.puml` (delete this bullet for BPMN-only diagrams): edit in any PlantUML editor; render with `node tools/diagram-kit/render.mjs <file>`.
 
 ## Change log
 
